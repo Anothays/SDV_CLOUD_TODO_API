@@ -1,19 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import type { Todo } from '../types';
+import { container } from '../db';
 
 const router = Router();
 
-// In-memory store — sera remplacé par Cosmos DB
-const todos: Todo[] = [];
-
 // GET /api/todos
-router.get('/', (_req: Request, res: Response) => {
-  res.json(todos);
+router.get('/', async (_req: Request, res: Response) => {
+  const { resources } = await container.items
+    .query<Todo>({ query: 'SELECT * FROM c ORDER BY c.createdAt DESC' })
+    .fetchAll();
+  res.json(resources);
 });
 
 // POST /api/todos
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const { title } = req.body as { title?: string };
 
   if (!title || typeof title !== 'string' || title.trim() === '') {
@@ -28,19 +29,13 @@ router.post('/', (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  todos.unshift(todo);
-  res.status(201).json(todo);
+  const { resource } = await container.items.create(todo);
+  res.status(201).json(resource);
 });
 
 // PATCH /api/todos/:id
-router.patch('/:id', (req: Request, res: Response) => {
-  const todo = todos.find((t) => t.id === req.params.id);
-
-  if (!todo) {
-    res.status(404).json({ error: 'Tâche introuvable.' });
-    return;
-  }
-
+router.patch('/:id', async (req: Request, res: Response) => {
+  const id = req.params.id as string;
   const { completed } = req.body as { completed?: boolean };
 
   if (typeof completed !== 'boolean') {
@@ -48,20 +43,30 @@ router.patch('/:id', (req: Request, res: Response) => {
     return;
   }
 
-  todo.completed = completed;
-  res.json(todo);
-});
+  const { resource: existing } = await container.item(id, id).read<Todo>();
 
-// DELETE /api/todos/:id
-router.delete('/:id', (req: Request, res: Response) => {
-  const idx = todos.findIndex((t) => t.id === req.params.id);
-
-  if (idx === -1) {
+  if (!existing) {
     res.status(404).json({ error: 'Tâche introuvable.' });
     return;
   }
 
-  todos.splice(idx, 1);
+  const updated: Todo = { ...existing, completed };
+  const { resource } = await container.item(id, id).replace(updated);
+  res.json(resource);
+});
+
+// DELETE /api/todos/:id
+router.delete('/:id', async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+
+  const { resource: existing } = await container.item(id, id).read<Todo>();
+
+  if (!existing) {
+    res.status(404).json({ error: 'Tâche introuvable.' });
+    return;
+  }
+
+  await container.item(id, id).delete();
   res.status(204).send();
 });
 
