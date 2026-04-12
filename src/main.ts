@@ -1,8 +1,10 @@
 import 'dotenv/config';
 import cors from 'cors';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import todosRouter from './routes/todos';
 import exportRouter from './routes/export';
+import { CosmosUnavailableError } from './db';
+import { BlobUnavailableError } from './blob';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -19,6 +21,14 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof CosmosUnavailableError || err instanceof BlobUnavailableError) {
+    res.status(503).json({ error: err.message });
+    return;
+  }
+  res.status(500).json({ error: 'Erreur interne.' });
 });
 
 app.listen(PORT, () => {
