@@ -7,9 +7,9 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@azure/cosmos": "^4.9.2",
