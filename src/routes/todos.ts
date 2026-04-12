@@ -7,7 +7,7 @@ const router = Router();
 
 // GET /api/todos
 router.get('/', async (_req: Request, res: Response) => {
-  const { resources } = await container.items
+  const { resources } = await container!.items
     .query<Todo>({ query: 'SELECT * FROM c ORDER BY c.createdAt DESC' })
     .fetchAll();
   res.json(resources);
@@ -29,7 +29,7 @@ router.post('/', async (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  const { resource } = await container.items.create(todo);
+  const { resource } = await container!.items.create(todo);
   res.status(201).json(resource);
 });
 
@@ -43,7 +43,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     return;
   }
 
-  const { resource: existing } = await container.item(id, id).read<Todo>();
+  const { resource: existing } = await container!.item(id, id).read<Todo>();
 
   if (!existing) {
     res.status(404).json({ error: 'Tâche introuvable.' });
@@ -51,7 +51,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 
   const updated: Todo = { ...existing, completed };
-  const { resource } = await container.item(id, id).replace(updated);
+  const { resource } = await container!.item(id, id).replace(updated);
   res.json(resource);
 });
 
@@ -59,14 +59,14 @@ router.patch('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   const id = req.params.id as string;
 
-  const { resource: existing } = await container.item(id, id).read<Todo>();
+  const { resource: existing } = await container!.item(id, id).read<Todo>();
 
   if (!existing) {
     res.status(404).json({ error: 'Tâche introuvable.' });
     return;
   }
 
-  await container.item(id, id).delete();
+  await container!.item(id, id).delete();
   res.status(204).send();
 });
 
